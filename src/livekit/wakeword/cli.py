@@ -139,13 +139,94 @@ def _download_piper_checkpoint(pt_dest: Path) -> None:
         logger.info(f"VITS config already exists: {json_dest}")
 
 
-def _download_voxcpm_model(cfg: WakeWordConfig) -> None:
-    """Fetch the VoxCPM HF snapshot during ``setup`` (same idea as Piper: download if missing).
+def _setup_voxcpm_gguf(cfg: WakeWordConfig) -> None:
+    """Download GGUF weights from Hugging Face and clone/compile llama.cpp-omni."""
+    try:
+        from huggingface_hub import hf_hub_download
+    except ImportError:
+        logger.warning(
+            "huggingface-hub not installed; cannot download VoxCPM GGUF. "
+            "Install train extras or: uv pip install huggingface-hub"
+        )
+        return
 
-    Uses ``voxcpm_tts.model_id`` and ``voxcpm_local_model_path`` from config. Only runs
-    ``snapshot_download`` if that directory is missing or empty, so re-running setup does
-    not redownload gigabytes.
-    """
+    # Create destination directory (e.g. data/voxcpm)
+    dest_dir = cfg.data_path / "voxcpm"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    baselm_path = cfg.voxcpm_gguf_baselm_path
+    acoustic_path = cfg.voxcpm_gguf_acoustic_path
+    repo = cfg.voxcpm_tts.gguf_model_id
+
+    if not baselm_path.exists():
+        logger.info(f"Downloading {cfg.voxcpm_tts.gguf_baselm_file} from {repo}...")
+        hf_hub_download(
+            repo_id=repo,
+            filename=cfg.voxcpm_tts.gguf_baselm_file,
+            local_dir=str(dest_dir),
+        )
+    else:
+        logger.info(f"BaseLM GGUF already exists: {baselm_path}")
+
+    if not acoustic_path.exists():
+        logger.info(f"Downloading {cfg.voxcpm_tts.gguf_acoustic_file} from {repo}...")
+        hf_hub_download(
+            repo_id=repo,
+            filename=cfg.voxcpm_tts.gguf_acoustic_file,
+            local_dir=str(dest_dir),
+        )
+    else:
+        logger.info(f"Acoustic GGUF already exists: {acoustic_path}")
+
+    # Clone and build llama.cpp-omni
+    omni_dir = cfg.llama_cpp_omni_dir
+    cli_bin = cfg.voxcpm2_cli_path
+
+    if not cli_bin.exists():
+        logger.info(f"llama.cpp-omni binary not found. Setting up in {omni_dir}...")
+        import subprocess
+        if not omni_dir.exists():
+            logger.info("Cloning llama.cpp-omni...")
+            subprocess.run(
+                ["git", "clone", "https://github.com/tc-mb/llama.cpp-omni.git", str(omni_dir)],
+                check=True,
+            )
+
+        try:
+            logger.info("Compiling llama.cpp-omni with CUDA support (-DGGML_CUDA=ON)...")
+            subprocess.run(
+                ["cmake", "-B", "build", "-DCMAKE_BUILD_TYPE=Release", "-DGGML_CUDA=ON"],
+                cwd=str(omni_dir),
+                check=True,
+            )
+            subprocess.run(
+                ["cmake", "--build", "build", "--target", "voxcpm2-cli", "-j", "6"],
+                cwd=str(omni_dir),
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"CUDA compilation failed, trying CPU-only compilation fallback: {e}")
+            subprocess.run(
+                ["cmake", "-B", "build", "-DCMAKE_BUILD_TYPE=Release"],
+                cwd=str(omni_dir),
+                check=True,
+            )
+            subprocess.run(
+                ["cmake", "--build", "build", "--target", "voxcpm2-cli", "-j", "6"],
+                cwd=str(omni_dir),
+                check=True,
+            )
+        logger.info("llama.cpp-omni setup complete!")
+    else:
+        logger.info(f"voxcpm2-cli binary already exists: {cli_bin}")
+
+
+def _download_voxcpm_model(cfg: WakeWordConfig) -> None:
+    """Fetch the VoxCPM HF snapshot or GGUF assets during ``setup``."""
+    if cfg.voxcpm_tts.use_gguf:
+        _setup_voxcpm_gguf(cfg)
+        return
+
     dest = cfg.voxcpm_local_model_path
     if dest.is_dir() and any(dest.iterdir()):
         logger.info("VoxCPM weights already present at %s", dest)

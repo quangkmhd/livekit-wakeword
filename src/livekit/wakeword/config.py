@@ -109,6 +109,10 @@ class VoxCpmTtsConfig(BaseModel):
     inference_timesteps_list: list[int] = Field(
         default_factory=lambda: list(voxcpm_defaults.INFERENCE_TIMESTEPS),
     )
+    use_gguf: bool = True
+    gguf_model_id: str = "DennisHuang648/VoxCPM2-GGUF"
+    gguf_baselm_file: str = "VoxCPM2-BaseLM-Q8_0.gguf"
+    gguf_acoustic_file: str = "VoxCPM2-Acoustic-F16.gguf"
 
 
 class WakeWordConfig(BaseModel):
@@ -196,6 +200,26 @@ class WakeWordConfig(BaseModel):
             p = Path(raw)
             return p.resolve() if p.is_absolute() else (self.data_path / p).resolve()
         return (self.data_path / Path(self.voxcpm_tts.model_cache_relpath)).resolve()
+
+    @property
+    def voxcpm_gguf_baselm_path(self) -> Path:
+        """Path to the BaseLM GGUF file."""
+        return (self.data_path / "voxcpm" / self.voxcpm_tts.gguf_baselm_file).resolve()
+
+    @property
+    def voxcpm_gguf_acoustic_path(self) -> Path:
+        """Path to the Acoustic GGUF file."""
+        return (self.data_path / "voxcpm" / self.voxcpm_tts.gguf_acoustic_file).resolve()
+
+    @property
+    def llama_cpp_omni_dir(self) -> Path:
+        """Directory where llama.cpp-omni is cloned."""
+        return (self.data_path / "llama.cpp-omni").resolve()
+
+    @property
+    def voxcpm2_cli_path(self) -> Path:
+        """Path to the voxcpm2-cli binary."""
+        return (self.llama_cpp_omni_dir / "build" / "bin" / "voxcpm2-cli").resolve()
 
 
 def load_config(path: str | Path) -> WakeWordConfig:
