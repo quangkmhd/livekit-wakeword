@@ -99,7 +99,7 @@ class WakeWordTrainer:
 
     def _build_dataloader(self) -> torch.utils.data.DataLoader:  # type: ignore[type-arg]
         model_dir = self.config.model_output_dir
-        data_files: dict[str, str | Path] = {
+        data_files: dict[str, str | Path | list[Path]] = {
             "positive": model_dir / "positive_features_train.npy",
             "adversarial_negative": model_dir / "negative_features_train.npy",
         }
@@ -117,6 +117,27 @@ class WakeWordTrainer:
                 acav_path,
             )
 
+        # Add GigaSpeech2 if requested
+        if (
+            "gigaspeech2_sample" in self.config.batch_n_per_class
+            and self.config.batch_n_per_class["gigaspeech2_sample"] > 0
+        ):
+            if self.config.gigaspeech2_path:
+                giga_dir = Path(self.config.gigaspeech2_path)
+                if giga_dir.exists() and giga_dir.is_dir():
+                    # Find all parts but exclude part 79 (validation)
+                    giga_files = [p for p in giga_dir.glob("*.npy") if "part79" not in p.name]
+                    if giga_files:
+                        data_files["gigaspeech2_sample"] = giga_files
+                    else:
+                        logger.warning(
+                            "GigaSpeech2 directory specified but no non-validation .npy files found."
+                        )
+                else:
+                    logger.warning(
+                        f"GigaSpeech2 path {self.config.gigaspeech2_path} does not exist or is not a directory."
+                    )
+
         # Add background noise as standalone negatives if available
         bg_features_path = model_dir / "background_noise_features_train.npy"
         if bg_features_path.exists():
@@ -132,6 +153,7 @@ class WakeWordTrainer:
             "positive": lambda _: 1,
             "adversarial_negative": lambda _: 0,
             "ACAV100M_sample": lambda _: 0,
+            "gigaspeech2_sample": lambda _: 0,
             "background_noise": lambda _: 0,
         }
 
@@ -156,6 +178,27 @@ class WakeWordTrainer:
             bg_neg = np.load(str(bg_test_path))
             neg = np.concatenate([neg, bg_neg], axis=0) if neg.shape[0] > 0 else bg_neg
 
+        # Also load GigaSpeech2 validation features if available (part 79)
+        if self.config.gigaspeech2_path:
+            giga_dir = Path(self.config.gigaspeech2_path)
+            giga_val_path = giga_dir / "gigaspeech2_vi_part79.npy"
+            if giga_val_path.exists():
+                giga_val = np.load(str(giga_val_path))
+                if giga_val.ndim == 2:
+                    n_full = (giga_val.shape[0] // 16) * 16
+                    remainder = giga_val.shape[0] - n_full
+                    if remainder > 0:
+                        logger.warning(
+                            "Dropping %d/%d GigaSpeech2 validation samples (not divisible by 16)",
+                            remainder,
+                            giga_val.shape[0],
+                        )
+                    giga_val = giga_val[:n_full].reshape(-1, 16, 96)
+                neg = np.concatenate([neg, giga_val], axis=0) if neg.shape[0] > 0 else giga_val
+                logger.info(
+                    f"Loaded GigaSpeech2 validation negatives from {giga_val_path}: shape={giga_val.shape}"
+                )
+
         # Also load validation features if available
         val_path = self.config.data_path / "features" / "validation_set_features.npy"
         if val_path.exists():
@@ -167,7 +210,8 @@ class WakeWordTrainer:
                 if remainder > 0:
                     logger.warning(
                         "Dropping %d/%d validation samples (not divisible by 16)",
-                        remainder, val_neg.shape[0],
+                        remainder,
+                        val_neg.shape[0],
                     )
                 val_neg = val_neg[:n_full].reshape(-1, 16, 96)
             neg = np.concatenate([neg, val_neg], axis=0) if neg.shape[0] > 0 else val_neg

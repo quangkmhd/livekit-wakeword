@@ -59,3 +59,6 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+checkpoint/
+VietSuperSpeech/
+gigaspeech2_converted/

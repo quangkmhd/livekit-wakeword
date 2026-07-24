@@ -33,6 +33,27 @@ def _load_validation_features(config: WakeWordConfig) -> tuple[np.ndarray, np.nd
         bg_neg = np.load(str(bg_test_path))
         neg = np.concatenate([neg, bg_neg], axis=0) if neg.shape[0] > 0 else bg_neg
 
+    # Also load GigaSpeech2 validation features if available (part 79)
+    if config.gigaspeech2_path:
+        giga_dir = Path(config.gigaspeech2_path)
+        giga_val_path = giga_dir / "gigaspeech2_vi_part79.npy"
+        if giga_val_path.exists():
+            giga_val = np.load(str(giga_val_path))
+            if giga_val.ndim == 2:
+                n_full = (giga_val.shape[0] // 16) * 16
+                remainder = giga_val.shape[0] - n_full
+                if remainder > 0:
+                    logger.warning(
+                        "Dropping %d/%d GigaSpeech2 validation samples (not divisible by 16)",
+                        remainder,
+                        giga_val.shape[0],
+                    )
+                giga_val = giga_val[:n_full].reshape(-1, 16, 96)
+            neg = np.concatenate([neg, giga_val], axis=0) if neg.shape[0] > 0 else giga_val
+            logger.info(
+                f"Loaded GigaSpeech2 validation negatives from {giga_val_path}: shape={giga_val.shape}"
+            )
+
     # Also include general negative validation features if available
     val_path = config.data_path / "features" / "validation_set_features.npy"
     if val_path.exists():

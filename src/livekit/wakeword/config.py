@@ -142,6 +142,7 @@ class WakeWordConfig(BaseModel):
     # Paths
     data_dir: Annotated[str, Field(description="Root data directory")] = "./data"
     output_dir: str = "./output"
+    gigaspeech2_path: str | None = None
 
     # Export
     output_format: ExportFormat = ExportFormat.onnx
@@ -170,7 +171,13 @@ class WakeWordConfig(BaseModel):
 
     @model_validator(mode="after")
     def _warn_unknown_batch_keys(self) -> Self:
-        known_keys = {"positive", "adversarial_negative", "ACAV100M_sample", "background_noise"}
+        known_keys = {
+            "positive",
+            "adversarial_negative",
+            "ACAV100M_sample",
+            "gigaspeech2_sample",
+            "background_noise",
+        }
         unknown = set(self.batch_n_per_class) - known_keys
         if unknown:
             _logger.warning(

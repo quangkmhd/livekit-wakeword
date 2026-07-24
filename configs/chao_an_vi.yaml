@@ -17,21 +17,119 @@ voxcpm_tts:
   cfg_values: [1.5, 2.0, 2.5, 3.0]
   inference_timesteps_list: [8, 10, 12]
   voice_design_prompts:
-    - "A young adult woman, clear mid-pitch voice, moderate pace, calm and professional"
-    - "A young adult man, warm baritone, steady pace, friendly and articulate"
-    - "A middle-aged woman, slightly low pitch, measured pace, confident tone"
-    - "A middle-aged man, deep resonant voice, slow deliberate pace"
-    - "An older adult woman, soft gentle voice, slower pace, kind tone"
-    - "An older adult man, gravelly tenor, moderate pace, matter-of-fact"
-    - "A young woman, bright energetic tone, slightly faster pace"
-    - "A young man, light tenor, quick conversational pace"
+    # Northern Vietnamese Accents (1-40)
+    - "A young adult woman from Hanoi with a clear Northern Vietnamese accent, high pitch, moderate pace, calm and professional"
+    - "A young adult man from Hanoi with a clear Northern Vietnamese accent, warm baritone, steady pace, friendly and articulate"
+    - "A middle-aged woman from Northern Vietnam, slightly low pitch, measured pace, confident tone"
+    - "A middle-aged man from Northern Vietnam, deep resonant voice, slow deliberate pace"
+    - "An elderly woman with a gentle Northern Vietnamese accent, soft voice, slow pace, kind tone"
+    - "An elderly man with a gravelly Northern Vietnamese accent, moderate pace, matter-of-fact tone"
+    - "A young woman with a Northern Vietnamese accent, bright energetic tone, slightly fast pace"
+    - "A young man with a Northern Vietnamese accent, light tenor, quick conversational pace"
+    - "A young boy with a child-like high-pitched Northern Vietnamese voice, cheerful and fast"
+    - "A young girl with a child-like high-pitched Northern Vietnamese voice, cute and clear"
+    - "A Northern Vietnamese female speaker speaking very fast, crisp articulation"
+    - "A Northern Vietnamese male speaker speaking very fast, energetic tenor"
+    - "A Northern Vietnamese female speaker speaking very slowly, pronouncing word-by-word with clear pauses"
+    - "A Northern Vietnamese male speaker speaking very slowly, deliberate word-by-word pronunciation"
+    - "A Northern Vietnamese woman in her thirties, smooth alto, even pace, news-anchor style"
+    - "A Northern Vietnamese man in his thirties, clear baritone, formal businesslike pace"
+    - "A Northern Vietnamese female speaker with a quiet whispery voice, close-mic feel, slow pace"
+    - "A Northern Vietnamese male speaker with a quiet whispery voice, close-mic feel, slow pace"
+    - "A Northern Vietnamese female speaker with a loud projecting voice, dõng dạc, authoritative"
+    - "A Northern Vietnamese male speaker with a loud dõng dạc voice, strong projection, formal"
+    - "A Northern Vietnamese speaker with a tired, low-energy voice, subdued and slow"
+    - "A Northern Vietnamese speaker with a nasal bright tone, energetic, fast pace"
+    - "A Northern Vietnamese speaker with vocal fry, casual young adult, medium pace"
+    - "A Northern Vietnamese speaker with a husky breathy voice, gentle and slow"
+    - "A Northern Vietnamese speaker with a monotone flat delivery, robotic clarity, steady pace"
+    - "A Northern Vietnamese female speaker, high pitch, cheerful animated tone, wide pitch range"
+    - "A Northern Vietnamese male speaker, deep bass voice, slow steady rhythm"
+    - "A Northern Vietnamese female speaker, teenage voice, light pitch, casual fast speech"
+    - "A Northern Vietnamese male speaker, teenage voice, casual conversational style, medium-fast"
+    - "A Northern Vietnamese executive female speaker, controlled dynamics, steady and serious"
+    - "A Northern Vietnamese executive male speaker, authoritative, steady pace"
+    - "A Northern Vietnamese speaker with a soft gentle voice, polite customer-service tone"
+    - "A Northern Vietnamese speaker with a sing-song playful tone, varied pitch, medium pace"
+    - "A Northern Vietnamese speaker, scholarly academic tone, thoughtful pauses, slower pace"
+    - "A Northern Vietnamese speaker, athletic robust voice, direct and strong, medium pace"
+    - "A Northern Vietnamese speaker speaking with heavy emphasis on each syllable, slow and clear"
+    - "A Northern Vietnamese speaker speaking with relaxed casual slurring, fast conversational pace"
+    - "A Northern Vietnamese female speaker, warm alto, smiling friendly delivery, medium pace"
+    - "A Northern Vietnamese male speaker, light baritone, relaxed laid-back tone, slow pace"
+    - "A Northern Vietnamese female speaker, sharp precise voice, minimal emotion, fast clear speech"
 
-n_samples: 25000
-n_samples_val: 5000
-n_background_samples: 2000
-n_background_samples_val: 500
+    # Southern Vietnamese Accents (41-75)
+    - "A young adult woman with a clear Southern Vietnamese accent (Saigon style), high pitch, melodic and friendly"
+    - "A young adult man with a clear Southern Vietnamese accent (Saigon style), warm tenor, conversational pace"
+    - "A middle-aged woman with a Southern Vietnamese accent, smooth alto, relaxed pace, warm tone"
+    - "A middle-aged man with a Southern Vietnamese accent, deep resonant baritone, steady rhythm"
+    - "An elderly woman with a Southern Vietnamese accent, soft gentle voice, slow pace"
+    - "An elderly man with a Southern Vietnamese accent, husky gravelly voice, slow deliberate pace"
+    - "A young woman with a Southern Vietnamese accent, bright cheerful tone, fast pace"
+    - "A young man with a Southern Vietnamese accent, energetic light tenor, quick pace"
+    - "A young boy with a Southern Vietnamese accent, high child-like voice, playful and fast"
+    - "A young girl with a Southern Vietnamese accent, sweet high-pitched voice, clear speech"
+    - "A Southern Vietnamese female speaker speaking very fast, fluent conversational rhythm"
+    - "A Southern Vietnamese male speaker speaking very fast, lively pace"
+    - "A Southern Vietnamese female speaker speaking very slowly, word-by-word with distinct pauses"
+    - "A Southern Vietnamese male speaker speaking very slowly, careful word-by-word enunciation"
+    - "A Southern Vietnamese woman in her thirties, professional presenter tone, clear and smooth"
+    - "A Southern Vietnamese man in his thirties, businesslike baritone, even pace"
+    - "A Southern Vietnamese female speaker with a soft whispery voice, intimate close-mic delivery"
+    - "A Southern Vietnamese male speaker with a low quiet voice, subdued energy"
+    - "A Southern Vietnamese female speaker with a loud dõng dạc voice, strong and expressive"
+    - "A Southern Vietnamese male speaker with a loud resonant voice, authoritative"
+    - "A Southern Vietnamese Mekong Delta accent (Miền Tây), warm casual tone, relaxed pace"
+    - "A Southern Vietnamese Mekong Delta accent (Miền Tây), friendly male baritone, conversational"
+    - "A Southern Vietnamese speaker with a nasal bright voice, energetic, fast pace"
+    - "A Southern Vietnamese speaker with vocal fry, young adult, casual medium pace"
+    - "A Southern Vietnamese speaker with a breathy soft tone, slow and gentle"
+    - "A Southern Vietnamese speaker with a robotic monotone delivery, flat pitch, steady speed"
+    - "A Southern Vietnamese female speaker, animated cheerful voice, lively and upbeat"
+    - "A Southern Vietnamese male speaker, deep bass tone, slow relaxed pace"
+    - "A Southern Vietnamese female speaker, teenage voice, light and fast conversational style"
+    - "A Southern Vietnamese male speaker, teenage voice, casual upbeat style"
+    - "A Southern Vietnamese speaker, executive tone, measured and confident"
+    - "A Southern Vietnamese speaker, customer service style, smiling and polite, medium pace"
+    - "A Southern Vietnamese speaker, playful sing-song pitch, varied pace"
+    - "A Southern Vietnamese speaker, athletic strong voice, direct delivery, fast pace"
+    - "A Southern Vietnamese speaker speaking with distinct pauses between words, slow emphasis"
+
+    # Central Vietnamese Accents & Diverse Tones (76-100)
+    - "A young woman with a Central Vietnamese accent (Hue style), soft melodic tone, measured pace"
+    - "A young man with a Central Vietnamese accent (Hue style), polite tenor, calm pace"
+    - "A middle-aged woman with a Central Vietnamese accent, distinct regional cadence, steady voice"
+    - "A middle-aged man with a Central Vietnamese accent (Danang style), strong baritone, direct tone"
+    - "An elderly woman with a Central Vietnamese accent, gentle low pitch, slow deliberate pace"
+    - "An elderly man with a Central Vietnamese accent, gravelly voice, slow speech"
+    - "A young woman with a Central Vietnamese accent (Nghe An / Ha Tinh style), distinctive pitch contour, medium pace"
+    - "A young man with a Central Vietnamese accent (Nghe An / Ha Tinh style), firm tenor, steady pace"
+    - "A Central Vietnamese female speaker speaking very fast, sharp regional rhythm"
+    - "A Central Vietnamese male speaker speaking very fast, energetic delivery"
+    - "A Central Vietnamese female speaker speaking slowly, word-by-word pronunciation"
+    - "A Central Vietnamese male speaker speaking slowly, deliberate emphasis on each syllable"
+    - "A Central Vietnamese woman in her thirties, clear alto, formal pace"
+    - "A Central Vietnamese man in his thirties, clear baritone, measured pace"
+    - "A Central Vietnamese female speaker with a soft quiet voice, close-mic feel"
+    - "A Central Vietnamese male speaker with a low quiet voice, subdued tone"
+    - "A Central Vietnamese speaker with a loud dõng dạc voice, strong projection"
+    - "A speaker with a child-like voice speaking Central Vietnamese, bright and fast"
+    - "A speaker with a husky rasp voice, low pitch, slow speech"
+    - "A speaker with a nasal high-pitched voice, energetic and fast"
+    - "A speaker with a breathy gentle tone, slow conversational pace"
+    - "A speaker with a monotone flat pitch, clear articulation, even pace"
+    - "A speaker with a cheerful animated tone, wide dynamic pitch range, lively pace"
+    - "A speaker with a tired subdued voice, low energy, steady slow pace"
+    - "A speaker with a crisp precise voice, fast clear pronunciation, studio quality"
+
+n_samples: 50000
+n_samples_val: 10000
+n_background_samples: 3000
+n_background_samples_val: 600
 tts_batch_size: 50
 
+# 10 key targeted negative phrases for maximum wake word sensitivity
 custom_negative_phrases:
   - "an vi"
   - "chào an"
@@ -39,18 +137,14 @@ custom_negative_phrases:
   - "chào an vì"
   - "cháo an vi"
   - "trào an vi"
-  - "chào an đi"
-  - "chào an bị"
   - "chào anh vi"
   - "chào an vy"
-  - "cháo ám vi"
-  - "chào mừng"
   - "xin chào"
   - "cảm ơn"
-  - "tạm biệt"
 
 data_dir: ./data
 output_dir: ./output
+gigaspeech2_path: /home/quangnhvn34/dev/oss/livekit-wakeword/gigaspeech2_converted
 
 augmentation:
   clip_duration: 2.0
@@ -73,5 +167,6 @@ target_fp_per_hour: 0.1
 batch_n_per_class:
   positive: 50
   adversarial_negative: 50
-  ACAV100M_sample: 1024
+  ACAV100M_sample: 512
+  gigaspeech2_sample: 1024
   background_noise: 50
