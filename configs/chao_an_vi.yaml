@@ -129,18 +129,9 @@ n_background_samples: 3000
 n_background_samples_val: 600
 tts_batch_size: 50
 
-# 10 key targeted negative phrases for maximum wake word sensitivity
-custom_negative_phrases:
-  - "an vi"
-  - "chào an"
-  - "chào an vị"
-  - "chào an vì"
-  - "cháo an vi"
-  - "trào an vi"
-  - "chào anh vi"
-  - "chào an vy"
-  - "xin chào"
-  - "cảm ơn"
+# Empty list: No synthetic custom negative phrases generated.
+# Model relies solely on background noise + real speech (GigaSpeech2/ACAV100M) for max sensitivity to "chào an vi".
+custom_negative_phrases: []
 
 data_dir: ./data
 output_dir: ./output
