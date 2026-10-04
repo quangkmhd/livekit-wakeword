@@ -23,6 +23,8 @@ class TestAlignClipToEnd:
         assert len(result) == 32000
 
     def test_longer_clip_than_target(self):
-        audio = np.ones(48000, dtype=np.float32)  # 3s, longer than target
+        audio = np.arange(48000, dtype=np.float32)  # 3s, longer than target
         result = align_clip_to_end(audio, 32000, jitter_samples=0)
         assert len(result) == 32000
+        np.testing.assert_array_equal(result, audio[:32000])
+

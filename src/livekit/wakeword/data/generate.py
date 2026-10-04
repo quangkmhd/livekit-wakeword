@@ -266,7 +266,7 @@ def _generate_background_clips(
     sample_rate = 16000
     chunk_samples = int(config.augmentation.clip_duration * sample_rate)
 
-    out_dir = config.model_output_dir / split_name
+    out_dir = config.dataset_output_dir / split_name
     existing = _count_original_clips(out_dir)
     if existing >= n_samples:
         logger.info(
@@ -335,7 +335,7 @@ def run_generate(config: WakeWordConfig) -> None:
     directory and skips completed splits or resumes partial ones from the
     existing count.
     """
-    model_dir = config.model_output_dir
+    dataset_dir = config.dataset_output_dir
     tts = get_tts_backend(config)
     tts.validate_artifacts()
 
@@ -346,7 +346,7 @@ def run_generate(config: WakeWordConfig) -> None:
     ]
 
     for split_name, phrases, n_target in splits:
-        split_dir = model_dir / split_name
+        split_dir = dataset_dir / split_name
         existing = _count_original_clips(split_dir)
         if existing >= n_target:
             logger.info(
@@ -374,8 +374,8 @@ def run_generate(config: WakeWordConfig) -> None:
         )
 
     # --- Adversarial negative splits ---
-    neg_train_dir = model_dir / "negative_train"
-    neg_test_dir = model_dir / "negative_test"
+    neg_train_dir = dataset_dir / "negative_train"
+    neg_test_dir = dataset_dir / "negative_test"
     neg_train_existing = _count_original_clips(neg_train_dir)
     neg_test_existing = _count_original_clips(neg_test_dir)
 
@@ -383,10 +383,18 @@ def run_generate(config: WakeWordConfig) -> None:
     if neg_train_existing >= config.n_samples and neg_test_existing >= config.n_samples_val:
         logger.info("Both negative splits already complete, skipping adversarial generation")
     else:
-        logger.info("Generating adversarial negative phrases...")
-        adv_phrases = generate_adversarial_phrases(
-            target_phrases=config.target_phrases,
-        )
+        adv_phrases: list[str] = []
+        if config.auto_adversarial_negatives:
+            logger.info("Generating adversarial negative phrases (CMUDict)...")
+            adv_phrases = generate_adversarial_phrases(
+                target_phrases=config.target_phrases,
+            )
+        else:
+            logger.info(
+                "Skipping English CMUDict adversarial generation "
+                "(auto_adversarial_negatives=False); using custom_negative_phrases (%d phrases)",
+                len(config.custom_negative_phrases),
+            )
         if config.custom_negative_phrases:
             adv_phrases.extend(config.custom_negative_phrases)
 
@@ -432,3 +440,4 @@ def run_generate(config: WakeWordConfig) -> None:
         _generate_background_clips(config, "background_train", config.n_background_samples)
     if config.n_background_samples_val > 0:
         _generate_background_clips(config, "background_test", config.n_background_samples_val)
+

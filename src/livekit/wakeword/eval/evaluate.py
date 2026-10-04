@@ -10,6 +10,7 @@ import numpy as np
 import onnxruntime as ort
 
 from ..config import WakeWordConfig
+from ..session import session_options
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +21,15 @@ def _load_validation_features(config: WakeWordConfig) -> tuple[np.ndarray, np.nd
     Returns:
         (positive_features, negative_features) each shaped (N, 16, 96).
     """
-    model_dir = config.model_output_dir
-    pos_path = model_dir / "positive_features_test.npy"
-    neg_path = model_dir / "negative_features_test.npy"
+    dataset_dir = config.dataset_output_dir
+    pos_path = dataset_dir / "positive_features_test.npy"
+    neg_path = dataset_dir / "negative_features_test.npy"
 
     pos = np.load(str(pos_path)) if pos_path.exists() else np.zeros((0, 16, 96))
     neg = np.load(str(neg_path)) if neg_path.exists() else np.zeros((0, 16, 96))
 
     # Also include background noise test features if available
-    bg_test_path = model_dir / "background_noise_features_test.npy"
+    bg_test_path = dataset_dir / "background_noise_features_test.npy"
     if bg_test_path.exists():
         bg_neg = np.load(str(bg_test_path))
         neg = np.concatenate([neg, bg_neg], axis=0) if neg.shape[0] > 0 else bg_neg
@@ -194,7 +195,9 @@ def run_eval(config: WakeWordConfig, model_path: str | Path) -> dict[str, float]
     if not model_path.exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
-    session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+    session = ort.InferenceSession(
+        str(model_path), session_options(), providers=["CPUExecutionProvider"]
+    )
     logger.info(f"Loaded model from {model_path}")
 
     # Load validation data

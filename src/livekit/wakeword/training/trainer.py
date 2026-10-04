@@ -98,10 +98,10 @@ class WakeWordTrainer:
         self._train_start: float = 0.0
 
     def _build_dataloader(self) -> torch.utils.data.DataLoader:  # type: ignore[type-arg]
-        model_dir = self.config.model_output_dir
+        dataset_dir = self.config.dataset_output_dir
         data_files: dict[str, str | Path] = {
-            "positive": model_dir / "positive_features_train.npy",
-            "adversarial_negative": model_dir / "negative_features_train.npy",
+            "positive": dataset_dir / "positive_features_train.npy",
+            "adversarial_negative": dataset_dir / "negative_features_train.npy",
         }
         # Add ACAV100M if available
         acav_path = (
@@ -118,7 +118,7 @@ class WakeWordTrainer:
             )
 
         # Add background noise as standalone negatives if available
-        bg_features_path = model_dir / "background_noise_features_train.npy"
+        bg_features_path = dataset_dir / "background_noise_features_train.npy"
         if bg_features_path.exists():
             data_files["background_noise"] = bg_features_path
         else:
@@ -143,15 +143,15 @@ class WakeWordTrainer:
 
     def _load_validation_data(self) -> tuple[np.ndarray, np.ndarray]:
         """Load test features for validation."""
-        model_dir = self.config.model_output_dir
-        pos_path = model_dir / "positive_features_test.npy"
-        neg_path = model_dir / "negative_features_test.npy"
+        dataset_dir = self.config.dataset_output_dir
+        pos_path = dataset_dir / "positive_features_test.npy"
+        neg_path = dataset_dir / "negative_features_test.npy"
 
         pos = np.load(str(pos_path)) if pos_path.exists() else np.zeros((0, 16, 96))
         neg = np.load(str(neg_path)) if neg_path.exists() else np.zeros((0, 16, 96))
 
         # Also load background noise test features if available
-        bg_test_path = model_dir / "background_noise_features_test.npy"
+        bg_test_path = dataset_dir / "background_noise_features_test.npy"
         if bg_test_path.exists():
             bg_neg = np.load(str(bg_test_path))
             neg = np.concatenate([neg, bg_neg], axis=0) if neg.shape[0] > 0 else bg_neg

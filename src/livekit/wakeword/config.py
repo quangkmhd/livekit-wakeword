@@ -105,10 +105,53 @@ class VoxCpmTtsConfig(BaseModel):
     )
     load_denoiser: bool = False
     voice_design_prompts: list[str] = Field(default_factory=voxcpm_defaults.voice_design_prompts)
+    voice_design_prompts_file: str | None = Field(
+        default=None,
+        description="Optional path to a .yaml or .txt file containing voice_design_prompts. "
+        "When set, replaces default prompts (any inline voice_design_prompts are appended).",
+    )
     cfg_values: list[float] = Field(default_factory=lambda: list(voxcpm_defaults.CFG_VALUES))
     inference_timesteps_list: list[int] = Field(
         default_factory=lambda: list(voxcpm_defaults.INFERENCE_TIMESTEPS),
     )
+
+    @model_validator(mode="after")
+    def _load_prompts_from_file(self) -> Self:
+        if not self.voice_design_prompts_file:
+            return self
+        path = Path(self.voice_design_prompts_file)
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"voice_design_prompts_file not found: {path}"
+            )
+        file_prompts = _load_string_list_file(path, yaml_key="voice_design_prompts")
+        default_prompts = voxcpm_defaults.voice_design_prompts()
+        if self.voice_design_prompts == default_prompts:
+            self.voice_design_prompts = file_prompts
+        else:
+            self.voice_design_prompts = file_prompts + self.voice_design_prompts
+        return self
+
+
+def _load_string_list_file(path: Path, yaml_key: str | None = None) -> list[str]:
+    """Load a list of non-empty strings from a .yaml/.yml or plain-text .txt file."""
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() in (".yaml", ".yml"):
+        loaded = yaml.safe_load(text)
+        if isinstance(loaded, dict) and yaml_key and yaml_key in loaded:
+            items = loaded[yaml_key]
+        elif isinstance(loaded, list):
+            items = loaded
+        else:
+            raise ValueError(
+                f"Expected a YAML list or mapping with key {yaml_key!r} in {path}"
+            )
+        return [str(x).strip() for x in items if str(x).strip()]
+    return [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
 
 
 class WakeWordConfig(BaseModel):
@@ -126,7 +169,17 @@ class WakeWordConfig(BaseModel):
     tts_backend: TtsBackend = TtsBackend.piper_vits
     piper_tts: PiperTtsConfig = Field(default_factory=PiperTtsConfig)
     voxcpm_tts: VoxCpmTtsConfig = Field(default_factory=VoxCpmTtsConfig)
+    auto_adversarial_negatives: bool = Field(
+        default=True,
+        description="Whether to auto-generate English CMUDict phoneme adversarial phrases. "
+        "Set to false for non-English wake words (e.g. Vietnamese) to avoid English false matches.",
+    )
     custom_negative_phrases: list[str] = Field(default_factory=list)
+    custom_negative_phrases_file: str | None = Field(
+        default=None,
+        description="Optional path to a .txt or .yaml file of negative phrases to append to "
+        "custom_negative_phrases.",
+    )
 
     # TTS parameters (Piper VITS + SLERP speaker blending)
     noise_scales: list[float] = Field(default_factory=lambda: [0.98])
@@ -137,6 +190,12 @@ class WakeWordConfig(BaseModel):
 
     # Paths
     data_dir: Annotated[str, Field(description="Root data directory")] = "./data"
+    dataset_dir: str | None = Field(
+        default=None,
+        description="Directory for generated WAV splits and extracted .npy features. "
+        "When set, allows multiple model versions (v1, v2, ...) to reuse the same dataset "
+        "without overwriting model outputs or re-running TTS. Defaults to model_output_dir.",
+    )
     output_dir: str = "./output"
 
     # Export
@@ -165,7 +224,7 @@ class WakeWordConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _warn_unknown_batch_keys(self) -> Self:
+    def _warn_unknown_batch_keys_and_load_files(self) -> Self:
         known_keys = {"positive", "adversarial_negative", "ACAV100M_sample", "background_noise"}
         unknown = set(self.batch_n_per_class) - known_keys
         if unknown:
@@ -173,11 +232,32 @@ class WakeWordConfig(BaseModel):
                 f"Unrecognized keys in batch_n_per_class: {unknown}. "
                 f"Known keys: {sorted(known_keys)}"
             )
+        if self.custom_negative_phrases_file:
+            neg_path = Path(self.custom_negative_phrases_file)
+            if not neg_path.is_file():
+                raise FileNotFoundError(
+                    f"custom_negative_phrases_file not found: {neg_path}"
+                )
+            extra_phrases = _load_string_list_file(
+                neg_path, yaml_key="custom_negative_phrases"
+            )
+            seen = set(self.custom_negative_phrases)
+            for phrase in extra_phrases:
+                if phrase not in seen:
+                    self.custom_negative_phrases.append(phrase)
+                    seen.add(phrase)
         return self
 
     @property
     def model_output_dir(self) -> Path:
         return Path(self.output_dir) / self.model_name
+
+    @property
+    def dataset_output_dir(self) -> Path:
+        """Directory containing WAV splits and extracted .npy feature files."""
+        if self.dataset_dir:
+            return Path(self.dataset_dir)
+        return self.model_output_dir
 
     @property
     def data_path(self) -> Path:
@@ -200,6 +280,36 @@ class WakeWordConfig(BaseModel):
 
 def load_config(path: str | Path) -> WakeWordConfig:
     """Load a WakeWordConfig from a YAML file."""
-    with open(path) as f:
+    cfg_path = Path(path).resolve()
+    cfg_dir = cfg_path.parent
+    with open(cfg_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
+
+    # Resolve relative file references against cwd first, then config parent directory,
+    # then repo root (cfg_dir.parent when config is in configs/).
+    def _resolve_aux_file(raw_path: str | None) -> str | None:
+        if not raw_path:
+            return raw_path
+        p = Path(raw_path)
+        if p.is_file():
+            return str(p)
+        for base in (cfg_dir, cfg_dir.parent):
+            cand = base / p
+            if cand.is_file():
+                return str(cand)
+        return raw_path
+
+    if isinstance(data, dict):
+        if "custom_negative_phrases_file" in data:
+            data["custom_negative_phrases_file"] = _resolve_aux_file(
+                data["custom_negative_phrases_file"]
+            )
+        vox = data.get("voxcpm_tts")
+        if isinstance(vox, dict) and "voice_design_prompts_file" in vox:
+            vox["voice_design_prompts_file"] = _resolve_aux_file(
+                vox["voice_design_prompts_file"]
+            )
+
     return WakeWordConfig(**data)
+
+

@@ -1,0 +1,151 @@
+# =============================================================================
+# Production wake-word config — VoxCPM2 TTS — Tiếng Việt ("an vy ơi.")
+# =============================================================================
+#
+# Install:   uv sync --extra train --extra voxcpm
+# Prefetch:  uv run livekit-wakeword setup --config configs/an_vy_ơi_v1.yaml
+# Pipeline:  uv run livekit-wakeword run configs/an_vy_ơi_v1.yaml
+#
+# Hoặc chạy từng bước (khuyến nghị khi quản lý nhiều phiên bản v1, v2...):
+#   1. Sinh audio:     uv run livekit-wakeword generate configs/an_vy_ơi_v1.yaml
+#   2. Augment + feat: uv run livekit-wakeword augment configs/an_vy_ơi_v1.yaml
+#   3. Train model:    uv run livekit-wakeword train configs/an_vy_ơi_v1.yaml
+#   4. Export ONNX:    uv run livekit-wakeword export configs/an_vy_ơi_v1.yaml
+#   5. Đánh giá DET:   uv run livekit-wakeword eval configs/an_vy_ơi_v1.yaml
+#
+# Kiến trúc 4 tầng chống lẫn lộn dữ liệu qua nhiều phiên bản:
+#   - data/                    : Tài nguyên gốc dùng chung (VoxCPM2, ACAV100M, MUSAN, RIRs)
+#   - data/vn_resources/       : 2.000 Voice Design Prompts & 30.271 câu Adversarial Tiếng Việt
+#   - datasets/an_vy_oi_ds_v1/ : Kho WAV + Features (.npy) dùng lại cho mọi bản model v1, v2, v3...
+#   - output/an_vy_oi/an_vy_oi_v1/ : Chứa riêng model (.pt, .onnx), metrics, và biểu đồ DET của bản v1
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# model_name (required)
+# -----------------------------------------------------------------------------
+# Dùng cho thư mục output/<model_name>/, tên checkpoint (.pt) và tên file ONNX (.onnx).
+model_name: an_vy_oi_v1
+
+# -----------------------------------------------------------------------------
+# target_phrases (required)
+# -----------------------------------------------------------------------------
+# Câu wake word mục tiêu cần phát hiện (bao gồm biến thể chính tả y/i).
+# Có dấu chấm cuối câu để VoxCPM2 ngắt hơi dứt khoát.
+target_phrases:
+  - "an vy ơi."
+  - "an vi ơi."
+
+# =============================================================================
+# Data generation (top-level)
+# =============================================================================
+
+# tts_backend — Engine tổng hợp giọng nói:
+#   voxcpm — VoxCPM2 voice-design TTS (bắt buộc cho Tiếng Việt / đa ngôn ngữ).
+tts_backend: voxcpm
+
+# n_samples — Số lượng mẫu huấn luyện gốc cho mỗi lớp (positive + adversarial negative)
+# Theo khuyến nghị Multilingual trong README.md: tăng gấp đôi từ 25.000 lên 50.000
+# để bao phủ trọn vẹn 30.271 câu VICMUDICT và >2 vòng của 24.000 tổ hợp giọng (2000 prompts × 4 cfg × 3 steps).
+# Sau 3 vòng augmentation: 50.000 × 3 rounds = 150.000 mẫu/lớp.
+n_samples: 50000
+
+# n_samples_val — Số lượng mẫu validation cho mỗi lớp (theo khuyến nghị Multilingual: 10.000).
+n_samples_val: 10000
+
+# n_background_samples / n_background_samples_val — Số lượng clip tạp âm nền độc lập (tương ứng tỷ lệ 2x).
+n_background_samples: 4000
+n_background_samples_val: 1000
+
+# tts_batch_size — Dùng cho Piper; VoxCPM2 chạy tuần tự nên bỏ qua thông số này.
+tts_batch_size: 50
+
+# auto_adversarial_negatives — Tắt bộ sinh CMUDict tiếng Anh mặc định để tránh sinh
+# các từ tiếng Anh nhiễu (vì chữ "an" trùng với mạo từ "an" trong tiếng Anh).
+auto_adversarial_negatives: false
+
+# custom_negative_phrases_file — Dùng trực tiếp 30.271 câu đối kháng âm vị Tiếng Việt (VICMUDICT).
+custom_negative_phrases_file: ./data/vn_resources/adversarial/adversarial_an_vy_oi.txt
+
+# -----------------------------------------------------------------------------
+# Piper-only TTS controls (bỏ qua khi tts_backend là voxcpm; giữ để đồng bộ schema)
+# -----------------------------------------------------------------------------
+noise_scales: [0.98]
+noise_scale_ws: [0.98]
+length_scales: [0.75, 1.0, 1.25]
+slerp_weights: [0.2, 0.35, 0.5, 0.65, 0.8]
+# max_speakers: null
+
+piper_tts:
+  checkpoint_relpath: piper/en-us-libritts-high.pt
+
+# -----------------------------------------------------------------------------
+# voxcpm_tts — Cấu hình VoxCPM2 Voice Design cho Tiếng Việt
+# -----------------------------------------------------------------------------
+# 2.000 personas Tiếng Việt × 4 cfg_values × 3 inference_timesteps = 24.000 tổ hợp giọng độc lập.
+voxcpm_tts:
+  model_id: openbmb/VoxCPM2
+  model_cache_relpath: voxcpm/VoxCPM2
+  local_model_path: null
+  load_denoiser: false
+  cfg_values: [1.5, 2.0, 2.5, 3.0]
+  inference_timesteps_list: [8, 10, 12]
+  voice_design_prompts_file: ./data/vn_resources/prompts/prompts_2000.yaml
+
+# =============================================================================
+# Paths (Kiến trúc phân tách Data / Dataset / Output)
+# =============================================================================
+
+# data_dir — Thư mục gốc chứa tài nguyên dùng chung (VoxCPM2 weights, ACAV100M, MUSAN, RIRs, vn_resources).
+data_dir: ./data
+
+# dataset_dir — Thư mục lưu WAV clips và features (.npy) đã trích xuất.
+# Khi thử nghiệm bản v2, v3... chỉ cần giữ nguyên dataset_dir này để tái sử dụng ngay bộ dữ liệu!
+dataset_dir: ./datasets/an_vy_oi_ds_v1
+
+# output_dir — Thư mục chứa kết quả model theo từng phiên bản (sẽ lưu vào ./output/an_vy_oi/an_vy_oi_v1/).
+output_dir: ./output/an_vy_oi
+
+# =============================================================================
+# augmentation (AugmentationConfig)
+# =============================================================================
+# clip_duration    — Cửa sổ âm thanh cố định 2.0 giây (16 frame × 96-dim embedding).
+# batch_size       — Batch size khi xử lý augmentation.
+# rounds           — 3 vòng trộn âm học (RIR phòng ốc, EQ 7 dải, méo hài Tanh, tạp âm MUSAN).
+augmentation:
+  clip_duration: 2.0
+  batch_size: 16
+  rounds: 3
+  background_paths: [./data/backgrounds]
+  rir_paths: [./data/rirs]
+
+# =============================================================================
+# model (ModelConfig)
+# =============================================================================
+# model_type — conv_attention (1D Conv + Multi-Head Self-Attention: tối ưu nhất để phân biệt
+#              thứ tự âm tiết và biến thiên thanh điệu Tiếng Việt).
+# model_size — large (256d, 3 blocks — độ chính xác tối đa cho bộ dữ liệu 50.000 mẫu/lớp).
+model:
+  model_type: conv_attention
+  model_size: large
+
+# =============================================================================
+# Training
+# =============================================================================
+# steps               — 100.000 bước ở Phase 1 (+ 10.000 bước Phase 2 + 10.000 bước Phase 3).
+# learning_rate       — AdamW base LR.
+# weight_decay        — AdamW L2 regularization.
+# label_smoothing     — Làm mượt nhãn BCE (0.05 -> 0.025 / 0.975) giúp hiệu chuẩn ngưỡng tốt hơn.
+# max_negative_weight — Trọng số phạt lớp negative tăng tuyến tính lên 3000 (nhân đôi nếu FPPH > target).
+# target_fp_per_hour  — Mục tiêu <= 0.1 lần báo nhầm mỗi giờ trên tập validation.
+steps: 100000
+learning_rate: 0.0001
+weight_decay: 0.01
+label_smoothing: 0.05
+max_negative_weight: 3000
+target_fp_per_hour: 0.1
+
+batch_n_per_class:
+  positive: 50
+  adversarial_negative: 50
+  ACAV100M_sample: 1024
+  background_noise: 50

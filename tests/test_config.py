@@ -156,3 +156,73 @@ def test_voxcpm_local_model_path_override(tmp_path: Path) -> None:
         voxcpm_tts={"local_model_path": "models/vox"},
     )
     assert cfg.voxcpm_local_model_path == (data / "models" / "vox").resolve()
+
+
+def test_dataset_output_dir_separation(tmp_path: Path) -> None:
+    cfg_default = WakeWordConfig(
+        model_name="an_vy_oi_v1",
+        target_phrases=["an vy ơi."],
+        output_dir=str(tmp_path / "output" / "an_vy_oi"),
+    )
+    assert cfg_default.dataset_output_dir == cfg_default.model_output_dir
+
+    cfg_separated = WakeWordConfig(
+        model_name="an_vy_oi_v2",
+        target_phrases=["an vy ơi."],
+        dataset_dir=str(tmp_path / "datasets" / "an_vy_oi_ds_v1"),
+        output_dir=str(tmp_path / "output" / "an_vy_oi"),
+    )
+    assert cfg_separated.dataset_output_dir == tmp_path / "datasets" / "an_vy_oi_ds_v1"
+    assert cfg_separated.model_output_dir == tmp_path / "output" / "an_vy_oi" / "an_vy_oi_v2"
+
+
+def test_external_prompts_and_adversarial_files(tmp_path: Path) -> None:
+    prompts_file = tmp_path / "prompts.yaml"
+    prompts_file.write_text(
+        "voice_design_prompts:\n  - 'Prompt VN 1'\n  - 'Prompt VN 2'\n",
+        encoding="utf-8",
+    )
+    adv_file = tmp_path / "adv.txt"
+    adv_file.write_text("an vy người người.\nbán thành phẩm vy ơi.\n", encoding="utf-8")
+
+    cfg = WakeWordConfig(
+        model_name="an_vy_oi_v1",
+        target_phrases=["an vy ơi."],
+        tts_backend=TtsBackend.voxcpm,
+        auto_adversarial_negatives=False,
+        custom_negative_phrases=["an vy.", "vy ơi."],
+        custom_negative_phrases_file=str(adv_file),
+        voxcpm_tts={"voice_design_prompts_file": str(prompts_file)},
+    )
+    assert cfg.auto_adversarial_negatives is False
+    assert cfg.voxcpm_tts.voice_design_prompts == ["Prompt VN 1", "Prompt VN 2"]
+    assert cfg.custom_negative_phrases == [
+        "an vy.",
+        "vy ơi.",
+        "an vy người người.",
+        "bán thành phẩm vy ơi.",
+    ]
+
+
+def test_load_an_vy_oi_v1_prod_config() -> None:
+    repo_root = Path(__file__).resolve().parent.parent
+    cfg_path = repo_root / "configs" / "an_vy_ơi_v1.yaml"
+    cfg = load_config(cfg_path)
+    assert cfg.model_name == "an_vy_oi_v1"
+    assert cfg.target_phrases == ["an vy ơi.", "an vi ơi."]
+    assert cfg.tts_backend is TtsBackend.voxcpm
+    assert cfg.auto_adversarial_negatives is False
+    assert cfg.n_samples == 50000
+    assert cfg.n_samples_val == 10000
+    assert cfg.n_background_samples == 4000
+    assert cfg.n_background_samples_val == 1000
+    assert cfg.model.model_type is ModelType.conv_attention
+    assert cfg.model.model_size is ModelSize.large
+    assert len(cfg.voxcpm_tts.voice_design_prompts) == 2000
+    assert len(cfg.custom_negative_phrases) == 30271
+    assert cfg.dataset_output_dir == Path("./datasets/an_vy_oi_ds_v1")
+    assert cfg.model_output_dir == Path("./output/an_vy_oi/an_vy_oi_v1")
+
+
+
+

@@ -114,13 +114,15 @@ def align_clip_to_end(
     """Align a clip to the END of the target window with random jitter.
 
     Positive clips are placed at the end of the window with 0-200ms jitter.
+    If the clip is longer than the available window, keep the beginning of the
+    clip (where TTS speech starts) rather than the tail.
     """
     result = np.zeros(target_length, dtype=np.float32)
     jitter = random.randint(0, jitter_samples)
     end_pos = target_length - jitter
     start_pos = max(0, end_pos - len(audio))
-    clip_start = max(0, len(audio) - (end_pos - start_pos))
-    result[start_pos:end_pos] = audio[clip_start : clip_start + (end_pos - start_pos)]
+    window_len = end_pos - start_pos
+    result[start_pos:end_pos] = audio[:window_len]
     return result
 
 
@@ -137,13 +139,13 @@ def run_augment(config: WakeWordConfig) -> None:
 
     target_duration = config.augmentation.clip_duration
 
-    model_dir = config.model_output_dir
+    dataset_dir = config.dataset_output_dir
 
     # Clean up old augmented files before starting fresh augmentation.
     # This prevents stale _rN.wav files from previous runs piling up.
     _aug_re = re.compile(r"^clip_\d{6}_r\d+\.wav$")
     for split in _ALL_SPLITS:
-        clip_dir = model_dir / split
+        clip_dir = dataset_dir / split
         if not clip_dir.exists():
             continue
         old_augs = [p for p in clip_dir.glob("*.wav") if _aug_re.match(p.name)]
@@ -160,7 +162,7 @@ def run_augment(config: WakeWordConfig) -> None:
     for round_idx in range(config.augmentation.rounds):
         logger.info(f"Augmentation round {round_idx + 1}/{config.augmentation.rounds}")
         for split in _ALL_SPLITS:
-            clip_dir = model_dir / split
+            clip_dir = dataset_dir / split
             if not clip_dir.exists():
                 logger.warning(f"Skipping {split}: directory not found")
                 continue
@@ -226,15 +228,15 @@ def _augment_directory(
             if is_positive:
                 audio = align_clip_to_end(audio, target_length)
             else:
-                # Center-pad or crop negatives
+                # Center-pad short negatives; crop long negatives from the start
+                # (since TTS always speaks the phrase from index 0).
                 if len(audio) < target_length:
                     padded = np.zeros(target_length, dtype=np.float32)
                     start = (target_length - len(audio)) // 2
                     padded[start : start + len(audio)] = audio
                     audio = padded
                 elif len(audio) > target_length:
-                    start = (len(audio) - target_length) // 2
-                    audio = audio[start : start + target_length]
+                    audio = audio[:target_length]
 
         # Derive output name from the original stem (strip any _rN suffix)
         orig_stem = re.sub(r"_r\d+$", "", wav_path.stem)

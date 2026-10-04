@@ -69,7 +69,7 @@ def extract_features_from_directory(
     return np.stack(all_features, axis=0)  # (N_clips, 16, 96)
 
 
-def run_extraction(config: WakeWordConfig, sess_options: SessionOptions) -> None:
+def run_extraction(config: WakeWordConfig, sess_options: SessionOptions | None = None) -> None:
     """Extract and save features for all splits of a wake word config."""
     mel_frontend = MelSpectrogramFrontend(
         onnx_path=get_mel_model_path(),
@@ -80,7 +80,7 @@ def run_extraction(config: WakeWordConfig, sess_options: SessionOptions) -> None
         sess_options=sess_options,
     )
 
-    model_dir = config.model_output_dir
+    dataset_dir = config.dataset_output_dir
     splits = [
         ("positive_train", "positive_features_train.npy"),
         ("positive_test", "positive_features_test.npy"),
@@ -91,7 +91,7 @@ def run_extraction(config: WakeWordConfig, sess_options: SessionOptions) -> None
     ]
 
     for clip_subdir, feature_filename in splits:
-        clip_dir = model_dir / clip_subdir
+        clip_dir = dataset_dir / clip_subdir
         if not clip_dir.exists():
             logger.warning(f"Skipping feature extraction for {clip_subdir}: not found")
             continue
@@ -103,6 +103,6 @@ def run_extraction(config: WakeWordConfig, sess_options: SessionOptions) -> None
             speech_embedding=speech_embedding,
         )
 
-        out_path = model_dir / feature_filename
+        out_path = dataset_dir / feature_filename
         np.save(str(out_path), features)
         logger.info(f"Saved {features.shape} features to {out_path}")

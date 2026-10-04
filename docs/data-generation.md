@@ -102,7 +102,7 @@ Generated audio is silence-trimmed via WebRTC VAD. If the VAD strips too aggress
 
 **Weights on disk:** `livekit-wakeword setup --config your.yaml` runs `snapshot_download(repo_id=voxcpm_tts.model_id, ...)` into `voxcpm_local_model_path`. By default this is `data_dir/voxcpm/VoxCPM2` (`voxcpm_tts.model_cache_relpath`), or `voxcpm_tts.local_model_path` if set (relative to `data_dir` or absolute). If that directory is already non-empty, setup skips the download (e.g. you prefetched or copied weights there).
 
-**Diversification:** Defaults cover many `voice_design_prompts` × `cfg_values` × `inference_timesteps_list` (see `VoxCpmTtsConfig` in `config.py`). Clip *i* cycles through that Cartesian product so resumes stay aligned with `start_index`. Output is **16 kHz** `clip_%06d.wav` (model native rate is resampled with librosa).
+**Diversification:** Defaults cover many `voice_design_prompts` × `cfg_values` × `inference_timesteps_list` (see `VoxCpmTtsConfig` in `config.py`). Clip *i* cycles through that Cartesian product so resumes stay aligned with `start_index`. Output is **16 kHz** `clip_%06d.wav` (model native rate is resampled with librosa and silence-trimmed via `librosa.effects.trim`).
 
 ## Adversarial Phrase Generation
 

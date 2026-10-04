@@ -21,8 +21,10 @@ ENV/
 *.swo
 
 # Data & output (large files, top-level only)
-/data/
+/data/*
+!/data/vn_resources/
 /output/
+/datasets/
 *.npy
 *.pt
 *.pth
@@ -59,3 +61,4 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+datasets/
